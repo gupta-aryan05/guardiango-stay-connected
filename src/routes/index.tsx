@@ -1,24 +1,117 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Landing } from "@/components/Landing";
+import { JourneySetup } from "@/components/JourneySetup";
+import { ActiveJourney } from "@/components/ActiveJourney";
+import { EmergencyPanel } from "@/components/EmergencyPanel";
+import {
+  clearJourney,
+  loadJourney,
+  saveJourney,
+  type Coords,
+  type Journey,
+} from "@/lib/journey";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+const TITLE = "GuardianGo — Your journey. Your check-in. Your safety.";
+const DESCRIPTION =
+  "GuardianGo is a personal safety check-in timer: set a journey, share your live location with a trusted contact, and get a ready-to-send alert if you miss a check-in.";
+
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
+type Screen = "landing" | "setup" | "active";
+
 function Index() {
+  const [screen, setScreen] = useState<Screen>("landing");
+  const [journey, setJourney] = useState<Journey | null>(null);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const stored = loadJourney();
+    if (stored) {
+      setJourney(stored);
+      setScreen("active");
+    }
+    setHydrated(true);
+  }, []);
+
+  const persist = useCallback((next: Journey | null) => {
+    setJourney(next);
+    if (next) saveJourney(next);
+    else clearJourney();
+  }, []);
+
+  const handleStart = (next: Journey) => {
+    persist(next);
+    setShowEmergency(false);
+    setScreen("active");
+  };
+
+  const handleCheckIn = () => {
+    if (!journey) return;
+    persist({
+      ...journey,
+      expiresAt: Date.now() + journey.durationMinutes * 60 * 1000,
+      checkIns: journey.checkIns + 1,
+    });
+    setShowEmergency(false);
+  };
+
+  const handleLocationUpdate = useCallback(
+    (coords: Coords) => {
+      setJourney((current) => {
+        if (!current) return current;
+        const next = { ...current, lastLocation: coords };
+        saveJourney(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleEnd = () => {
+    persist(null);
+    setShowEmergency(false);
+    setScreen("landing");
+  };
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-background">
+      {!hydrated ? (
+        <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+          Loading GuardianGo…
+        </div>
+      ) : screen === "landing" ? (
+        <Landing onStart={() => setScreen("setup")} />
+      ) : screen === "setup" ? (
+        <div className="px-4 py-12">
+          <JourneySetup onStart={handleStart} onCancel={() => setScreen("landing")} />
+        </div>
+      ) : journey ? (
+        <div className="px-4 py-10">
+          <ActiveJourney
+            journey={journey}
+            onCheckIn={handleCheckIn}
+            onEndJourney={handleEnd}
+            onEmergency={() => setShowEmergency(true)}
+            onLocationUpdate={handleLocationUpdate}
+          />
+        </div>
+      ) : null}
+
+      {showEmergency && journey && (
+        <EmergencyPanel journey={journey} onClose={() => setShowEmergency(false)} />
+      )}
+    </main>
   );
 }
