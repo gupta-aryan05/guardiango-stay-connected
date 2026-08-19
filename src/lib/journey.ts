@@ -90,6 +90,46 @@ export function buildEmergencyMessage(journey: Journey): string {
     .join("\n");
 }
 
+export function smsLink(journey: Journey): string | null {
+  if (!journey.contact.phone) return null;
+  const number = journey.contact.phone.replace(/[^\d+]/g, "");
+  if (!number) return null;
+  // "?&body=" is the cross-platform (iOS + Android) form for prefilled SMS text
+  return `sms:${number}?&body=${encodeURIComponent(buildEmergencyMessage(journey))}`;
+}
+
+export function telLink(journey: Journey): string | null {
+  const number = journey.contact.phone.replace(/[^\d+]/g, "");
+  return number ? `tel:${number}` : null;
+}
+
+export const SAFETY_TIPS = [
+  {
+    title: "Share your route, not just your arrival",
+    body: "Tell your trusted contact the road or transport you plan to take, so a search starts in the right place.",
+  },
+  {
+    title: "Keep one earbud out",
+    body: "Hearing traffic and footsteps matters more than your playlist on a quiet street.",
+  },
+  {
+    title: "Stay on lit, busy paths",
+    body: "A longer route past open shops beats a shortcut through an empty park or alley.",
+  },
+  {
+    title: "Keep your phone charged above 30%",
+    body: "Your location link is only useful while the device is alive. Carry a power bank on long trips.",
+  },
+  {
+    title: "Trust the early instinct",
+    body: "If something feels off, step into a shop, cafe or petrol station and call someone.",
+  },
+  {
+    title: "Check in more often at night",
+    body: "Pick a 15-minute timer after dark and reset it each time you reach a landmark.",
+  },
+];
+
 export function mailtoLink(journey: Journey): string | null {
   if (!journey.contact.email) return null;
   const subject = `GuardianGo alert: missed check-in (${journey.destination})`;

@@ -6,6 +6,8 @@ import {
   formatTime,
   mailtoLink,
   mapsLink,
+  smsLink,
+  telLink,
   type Journey,
 } from "@/lib/journey";
 
