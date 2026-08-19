@@ -158,5 +158,30 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans-family);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display-family);
+    letter-spacing: -0.02em;
   }
 }
+
+@utility bg-hero-gradient {
+  background-image: var(--gradient-hero);
+}
+
+@utility bg-safe-gradient {
+  background-image: var(--gradient-safe);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
